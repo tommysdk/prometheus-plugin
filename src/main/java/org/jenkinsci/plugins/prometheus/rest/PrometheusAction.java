@@ -1,25 +1,23 @@
 package org.jenkinsci.plugins.prometheus.rest;
 
 import hudson.Extension;
-import hudson.model.RootAction;
 import hudson.model.UnprotectedRootAction;
 import hudson.security.Messages;
 import hudson.security.Permission;
 import hudson.util.HttpResponses;
 import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.dropwizard.DropwizardExports;
 import jenkins.metrics.api.Metrics;
 import jenkins.model.Jenkins;
 import org.acegisecurity.Authentication;
-import org.jenkinsci.plugins.prometheus.JobCollector;
 import org.jenkinsci.plugins.prometheus.MetricsRequest;
+import org.jenkinsci.plugins.prometheus.StatsCollector;
 import org.jenkinsci.plugins.prometheus.config.PrometheusConfiguration;
 import org.kohsuke.stapler.StaplerRequest;
 
 @Extension
 public class PrometheusAction implements UnprotectedRootAction {
     private CollectorRegistry collectorRegistry;
-    private JobCollector jobCollector = new JobCollector();
+    private StatsCollector statsCollector = new StatsCollector();
 
     @Override
     public String getIconFileName() {
@@ -41,10 +39,7 @@ public class PrometheusAction implements UnprotectedRootAction {
             checkPermission(Metrics.VIEW);
             if (collectorRegistry == null) {
                 collectorRegistry = CollectorRegistry.defaultRegistry;
-                collectorRegistry.register(jobCollector);
-                if (Metrics.metricRegistry() != null) {
-                    collectorRegistry.register(new DropwizardExports(Metrics.metricRegistry()));
-                }
+                collectorRegistry.register(statsCollector);
             }
             return MetricsRequest.prometheusResponse(collectorRegistry);
         }
@@ -56,7 +51,7 @@ public class PrometheusAction implements UnprotectedRootAction {
             Authentication authentication = Jenkins.getAuthentication();
             if (!Jenkins.getActiveInstance().getACL().hasPermission(authentication, permission)) {
                 String message = Messages.AccessDeniedException2_MissingPermission(authentication.getName(),
-                                                                                   permission.group.title + "/" + permission.name);
+                        permission.group.title + "/" + permission.name);
                 throw HttpResponses.errorWithoutStack(403, message);
             }
         }
